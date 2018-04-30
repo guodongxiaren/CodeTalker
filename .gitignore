@@ -1,1 +1,8 @@
 *~
+*.gch
+*.pem
+*.key
+*.cer
+*.pfx
+*.der
+debug/
