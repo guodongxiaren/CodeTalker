@@ -11,7 +11,7 @@
 int main()  
 {  
     using namespace openssl;
-    string e = Tools::RsaPublicEncrypt("hello world", "./rsa_public.key");
+    string e = Tools::RsaPublicEncrypt("hello world", "./public_key.pem");
     string be = Tools::Base64Encode(e.c_str(), false);
     cout<<be<<endl;
 } 

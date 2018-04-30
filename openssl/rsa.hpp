@@ -4,8 +4,8 @@
 	> Mail: 
 	> Created Time: 日  4/29 23:05:55 2018
  ************************************************************************/
-#ifndef _OPENSS_RSA_
-#define _OPENSS_RSA_
+#ifndef _OPENSSL_RSA_
+#define _OPENSSL_RSA_
 
 #include<iostream>
 #include<string>
@@ -20,16 +20,25 @@ using namespace std;
   
 namespace openssl{
 
+enum PublicKeyFormat
+{
+    DEFAULT = 0,
+    PKCS1 = 1,
+    
+};
+
 class Tools 
 {
 public:
-    static string RsaPublicEncrypt(const string& plainText, const string& publicKey);
+    static string RsaPublicEncrypt(const string& plainText, const string& publicKey,
+                                   PublicKeyFormat format = PublicKeyFormat::DEFAULT);
     static string Base64Encode(const string& input, bool with_new_line);
     static string Base64Decode(const string& input, bool with_new_line);
         
 };
 
-string Tools::RsaPublicEncrypt(const string& plainText, const string& publicKey)
+string Tools::RsaPublicEncrypt(const string& plainText, const string& publicKey,
+                               PublicKeyFormat format /* = PublicKeyFormat::DEFAULT */)
 {
     string strRet;
     RSA *rsa = NULL;
@@ -42,9 +51,14 @@ string Tools::RsaPublicEncrypt(const string& plainText, const string& publicKey)
     keybio = BIO_new(BIO_s_file());
     BIO_read_filename(keybio, publicKey.c_str());
 
-    /* RSA *pRsaPublicKey = RSA_new(); */
-    rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
-    //rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
+    if (format == PublicKeyFormat::DEFAULT)
+    {
+        rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
+    }
+    else /* PKCS1*/
+    {
+        rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
+    }
 
     // initialize
     int len = RSA_size(rsa);
