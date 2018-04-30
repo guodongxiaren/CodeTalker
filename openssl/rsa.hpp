@@ -55,7 +55,7 @@ string Tools::RsaPublicEncrypt(const string& plainText, const string& publicKey,
     {
         rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
     }
-    else /* PKCS1*/
+    else /* PKCS1 */
     {
         rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
     }
