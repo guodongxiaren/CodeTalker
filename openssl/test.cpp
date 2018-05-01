@@ -6,12 +6,14 @@
  ************************************************************************/
 
 #include <iostream>
-#include "rsa.hpp"
+#include "rsa_proxy.hpp"
 
 int main()  
 {  
     using namespace openssl;
-    string e = Tools::RsaPublicEncrypt("hello world", "./public_key.pem");
-    string be = Tools::Base64Encode(e.c_str(), false);
+    RSAProxy rsa;
+    rsa.LoadPublicKeyFromFile("./public_key.pem");
+    string e = rsa.RsaPublicEncrypt("hello world");
+    string be = rsa.Base64Encode(e.c_str(), false);
     cout<<be<<endl;
 } 

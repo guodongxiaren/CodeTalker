@@ -1,6 +1,6 @@
 /*************************************************************************
 	> File Name: 
-	> Author: 
+	> Author: guodongxiaren 
 	> Mail: 
 	> Created Time: 日  4/29 23:05:55 2018
  ************************************************************************/
@@ -26,60 +26,107 @@ enum PublicKeyFormat
     PKCS1 = 1,
     
 };
-
-class Tools 
+class RSAProxy
 {
 public:
-    static string RsaPublicEncrypt(const string& plainText, const string& publicKey,
+    RSAProxy()
+    {
+        rsa_ = NULL;
+    }
+    ~RSAProxy()
+    {
+        if (!rsa_)
+        {
+            RSA_free(rsa_);
+            rsa_ = NULL;
+        }
+        // avoid memory leak
+        CRYPTO_cleanup_all_ex_data();
+    }
+
+    RSA* data()
+    {
+        return rsa_;
+    }
+
+    int size()
+    {
+        return RSA_size(rsa_);
+    }
+
+    // load public key from file by filename
+    void LoadPublicKeyFromFile(const string& public_key_filename, 
+                              PublicKeyFormat format = PublicKeyFormat::DEFAULT);
+
+    // load public key from memory 
+    void LoadPublicKeyFromMem(const string& public_key_string, 
+                              PublicKeyFormat format = PublicKeyFormat::DEFAULT);
+
+    string RsaPublicEncrypt(const string& plainText,
                                    PublicKeyFormat format = PublicKeyFormat::DEFAULT);
+public:
     static string Base64Encode(const string& input, bool with_new_line);
     static string Base64Decode(const string& input, bool with_new_line);
-        
+
+private:
+    RSA* rsa_;
 };
 
-string Tools::RsaPublicEncrypt(const string& plainText, const string& publicKey,
-                               PublicKeyFormat format /* = PublicKeyFormat::DEFAULT */)
-{
-    string strRet;
-    RSA *rsa = NULL;
 
+void RSAProxy::LoadPublicKeyFromFile(const string& public_key_filename, 
+                                     PublicKeyFormat format /* = PublicKeyFormat::DEFAULT */)
+{
     BIO *keybio = NULL;
     //// read public key from memory
     //keybio = BIO_new_mem_buf((unsigned char*)publicKey.c_str(), -1);
 
     // read public key from file system
     keybio = BIO_new(BIO_s_file());
-    BIO_read_filename(keybio, publicKey.c_str());
+    BIO_read_filename(keybio, public_key_filename.c_str());
 
     if (format == PublicKeyFormat::DEFAULT)
     {
-        rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
+        rsa_ = PEM_read_bio_RSA_PUBKEY(keybio, &rsa_, NULL, NULL);
     }
-    else /* PKCS1 */
+    else /* PKCS#1 */
     {
-        rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
+        rsa_ = PEM_read_bio_RSAPublicKey(keybio, &rsa_, NULL, NULL);
+    }
+    
+    BIO_free_all(keybio);
+}
+
+string RSAProxy::RsaPublicEncrypt(const string& plainText, 
+                               PublicKeyFormat format /* = PublicKeyFormat::DEFAULT */)
+{
+    if (rsa_ == NULL)
+    {
+        // throw xxx
     }
 
-    // initialize
-    int len = RSA_size(rsa);
-    char *encryptText = (char*)malloc(len + 1);
-    memset(encryptText, 0, len + 1);
+    int len = this->size();
+    char *encrypt_text = (char*)malloc(len + 1);
+    memset(encrypt_text, 0, len + 1);
     
     int ret = RSA_public_encrypt(plainText.length(), (const unsigned char*)plainText.c_str(), 
-                                (unsigned char*)encryptText, rsa, RSA_PKCS1_PADDING);
+                                (unsigned char*)encrypt_text, rsa_, RSA_PKCS1_PADDING);
+    string str_encrypt;
     if (ret >= 0)
     {
-        strRet = string(encryptText, ret);
+        str_encrypt = string(encrypt_text, ret);
+        free(encrypt_text);
     }
-    free(encryptText);
-    BIO_free_all(keybio);
-    RSA_free(rsa);
+    else
+    {
+        free(encrypt_text);
+        // throw xxx
+    }
 
-    return strRet;
+    return str_encrypt;
 
 }
 
-string Tools::Base64Encode(const string& input, bool with_new_line)  
+string RSAProxy::Base64Encode(const string& input, bool with_new_line)  
 {  
     int length = input.size();
     BIO * bmem = NULL;  
@@ -107,7 +154,7 @@ string Tools::Base64Encode(const string& input, bool with_new_line)
     return res;  
 }  
   
-string Tools::Base64Decode(const string& input, bool with_new_line)  
+string RSAProxy::Base64Decode(const string& input, bool with_new_line)  
 {  
     int length = input.size();
     BIO * b64 = NULL;  
