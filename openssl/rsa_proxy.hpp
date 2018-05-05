@@ -35,11 +35,9 @@ public:
     }
     ~RSAProxy()
     {
-        if (!rsa_)
-        {
-            RSA_free(rsa_);
-            rsa_ = NULL;
-        }
+        RSA_free(rsa_);
+        rsa_ = NULL;
+        RSA_free(rsa_);
         // avoid memory leak
         CRYPTO_cleanup_all_ex_data();
     }
@@ -79,6 +77,7 @@ public:
 
 private:
     RSA* rsa_;
+    RSA* pub_key_;
     RSA* pri_key_;
 };
 
