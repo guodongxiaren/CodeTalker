@@ -29,27 +29,39 @@ enum PublicKeyFormat
 class RSAProxy
 {
 public:
-    RSAProxy()
+    RSAProxy():pub_key_(NULL),pri_key_(NULL)
     {
-        rsa_ = NULL;
     }
     ~RSAProxy()
     {
-        RSA_free(rsa_);
-        rsa_ = NULL;
-        RSA_free(rsa_);
+        RSA_free(pub_key_);
+        pub_key_ = NULL;
+        RSA_free(pri_key_);
+        pri_key_ = NULL;
         // avoid memory leak
         CRYPTO_cleanup_all_ex_data();
     }
 
-    RSA* data()
+    RSA* get_public_key()
     {
-        return rsa_;
+        return pub_key_;
     }
 
-    int size()
+    RSA* get_private_key()
     {
-        return RSA_size(rsa_);
+        return pri_key_;
+    }
+
+    int size(bool is_public = true)
+    {
+        if (is_public)
+        {
+            return RSA_size(pub_key_);
+        }
+        else
+        {
+            return RSA_size(pri_key_);
+        }
     }
 
     // load private key from file by filename
@@ -76,24 +88,22 @@ public:
     static string Sha256(const char* data, bool bHex = true);
 
 private:
-    RSA* rsa_;
     RSA* pub_key_;
     RSA* pri_key_;
 };
 
+
 int pawd_callback(char* a, int b, int c, void* d)
 {
-    cout<<"ddd"<<endl;
+        cout<<"ddd"<<endl;
 
-    return 0;
+        return 0;
+
 }
-
 // load private key from file by filename
 void RSAProxy::LoadPrivateKeyFromFile(const string& private_key_filename)
 {
     BIO *keybio = NULL;
-    //// read public key from memory
-    //keybio = BIO_new_mem_buf((unsigned char*)publicKey.c_str(), -1);
 
     // read public key from file system
     keybio = BIO_new(BIO_s_file());
@@ -109,8 +119,6 @@ void RSAProxy::LoadPublicKeyFromFile(const string& public_key_filename,
                                      PublicKeyFormat format /* = PublicKeyFormat::DEFAULT */)
 {
     BIO *keybio = NULL;
-    //// read public key from memory
-    //keybio = BIO_new_mem_buf((unsigned char*)publicKey.c_str(), -1);
 
     // read public key from file system
     keybio = BIO_new(BIO_s_file());
@@ -118,11 +126,11 @@ void RSAProxy::LoadPublicKeyFromFile(const string& public_key_filename,
 
     if (format == PublicKeyFormat::DEFAULT)
     {
-        rsa_ = PEM_read_bio_RSA_PUBKEY(keybio, &rsa_, NULL, NULL);
+        pub_key_ = PEM_read_bio_RSA_PUBKEY(keybio, &pub_key_, NULL, NULL);
     }
     else /* PKCS#1 */
     {
-        rsa_ = PEM_read_bio_RSAPublicKey(keybio, &rsa_, NULL, NULL);
+        pub_key_ = PEM_read_bio_RSAPublicKey(keybio, &pub_key_, NULL, NULL);
     }
     
     BIO_free_all(keybio);
@@ -131,7 +139,7 @@ void RSAProxy::LoadPublicKeyFromFile(const string& public_key_filename,
 string RSAProxy::RsaPublicEncrypt(const string& plainText, 
                                PublicKeyFormat format /* = PublicKeyFormat::DEFAULT */)
 {
-    if (rsa_ == NULL)
+    if (NULL == pub_key_)
     {
         // throw xxx
     }
@@ -141,7 +149,7 @@ string RSAProxy::RsaPublicEncrypt(const string& plainText,
     memset(encrypt_text, 0, len + 1);
     
     int ret = RSA_public_encrypt(plainText.length(), (const unsigned char*)plainText.c_str(), 
-                                (unsigned char*)encrypt_text, rsa_, RSA_PKCS1_PADDING);
+                                (unsigned char*)encrypt_text, pub_key_, RSA_PKCS1_PADDING);
     string str_encrypt;
     if (ret >= 0)
     {
@@ -160,11 +168,10 @@ string RSAProxy::RsaPublicEncrypt(const string& plainText,
 
 string RSAProxy::MakeSign(const string& sign_src)
 {
-    RSA* _rsa_ = pri_key_;
     string hash = Sha256(sign_src.c_str(), false);
     unsigned int outlen;
     unsigned char outret[4096] = {0};
-    int result = RSA_sign(NID_sha1, (const unsigned char*)hash.c_str(), hash.size(), outret, &outlen, _rsa_);
+    int result = RSA_sign(NID_sha256, (const unsigned char*)hash.c_str(), hash.size(), outret, &outlen, pri_key_);
 
     if(result != 1)
     {
@@ -176,7 +183,6 @@ string RSAProxy::MakeSign(const string& sign_src)
 }
 bool RSAProxy::VerifySign(const string& src_string, const string& sign)
 {
-    RSA* pub_key_ = rsa_;
     if (NULL == pub_key_)
     {
         return false;
